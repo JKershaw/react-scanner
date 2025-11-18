@@ -248,13 +248,161 @@
       stroke: #e74c3c !important;
       stroke-width: 3px !important;
     }
+
+    /* Path Finder Styles */
+    .path-finder-section {
+      border-top: 2px solid #9b59b6;
+      padding: 20px;
+      background: #f0f3f8;
+    }
+
+    .mode-toggle {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .mode-btn {
+      padding: 10px 20px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .mode-btn.active {
+      border-color: #3498db;
+      background: #3498db;
+      color: white;
+    }
+
+    .selection-info {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .selection-box {
+      flex: 1;
+      padding: 10px;
+      border: 2px dashed #ddd;
+      border-radius: 4px;
+      text-align: center;
+    }
+
+    .selection-box.start {
+      border-color: #27ae60;
+    }
+
+    .selection-box.end {
+      border-color: #e74c3c;
+    }
+
+    .selection-box.filled {
+      background: #f8f9fa;
+      border-style: solid;
+    }
+
+    .paths-list {
+      max-height: 200px;
+      overflow-y: auto;
+      margin-bottom: 15px;
+    }
+
+    .path-item {
+      padding: 10px;
+      margin-bottom: 8px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .path-item:hover {
+      border-color: #3498db;
+      background: #f8f9fa;
+    }
+
+    .path-item.selected {
+      border-color: #3498db;
+      background: #e8f4fc;
+    }
+
+    .path-item-header {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .path-item-nodes {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .test-output {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      border-radius: 4px;
+      padding: 15px;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre;
+      overflow-x: auto;
+      max-height: 400px;
+    }
+
+    .test-actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .btn-generate {
+      background: #9b59b6;
+      color: white;
+    }
+
+    .btn-generate:hover {
+      background: #8e44ad;
+    }
+
+    .btn-download {
+      background: #27ae60;
+      color: white;
+    }
+
+    .btn-download:hover {
+      background: #229954;
+    }
+
+    .format-select {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .node-start rect,
+    .node-start polygon {
+      stroke: #27ae60 !important;
+      stroke-width: 3px !important;
+    }
+
+    .node-end rect,
+    .node-end polygon {
+      stroke: #e74c3c !important;
+      stroke-width: 3px !important;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
       <h1>Flowchart: src</h1>
-      <div class="meta">Generated: 2025-11-18T19:44:59.747Z</div>
+      <div class="meta">Generated: 2025-11-18T22:37:07.602Z</div>
       <div class="stats">
         <div class="stat">
           <div class="stat-label">Pages</div>
@@ -338,6 +486,62 @@ graph TD
   <span class="gherkin-keyword">Scenario:</span> User navigation path
     <span class="gherkin-keyword">Given</span> the user starts their journey
     <span style="color: #95a5a6;"># Click nodes above to build the journey</span>
+      </div>
+    </div>
+
+    <div class="path-finder-section">
+      <div class="journey-header">
+        <h2>Test Generator</h2>
+      </div>
+
+      <div class="mode-toggle">
+        <button class="mode-btn active" onclick="setMode('journey')">Journey Mode</button>
+        <button class="mode-btn" onclick="setMode('pathfind')">Path Finding Mode</button>
+      </div>
+
+      <div id="pathFinderUI" style="display: none;">
+        <div class="instructions">
+          Select a start node (green) and end node (red) to find all paths between them and generate tests.
+        </div>
+
+        <div class="selection-info">
+          <div class="selection-box start" id="startNodeBox">
+            <strong>Start Node</strong><br>
+            <span id="startNodeLabel">Click a node...</span>
+          </div>
+          <div class="selection-box end" id="endNodeBox">
+            <strong>End Node</strong><br>
+            <span id="endNodeLabel">Click a node...</span>
+          </div>
+        </div>
+
+        <button class="journey-actions button btn-generate" onclick="findPaths()" style="margin-bottom: 15px; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
+          Find Paths
+        </button>
+        <button class="journey-actions button btn-clear" onclick="clearSelection()" style="margin-bottom: 15px; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px;">
+          Clear Selection
+        </button>
+
+        <div class="paths-list" id="pathsList"></div>
+
+        <div class="test-actions">
+          <select class="format-select" id="testFormat">
+            <option value="playwright">Playwright</option>
+            <option value="cypress">Cypress</option>
+            <option value="gherkin">Gherkin</option>
+          </select>
+          <button class="journey-actions button btn-generate" onclick="generateTest()" style="padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
+            Generate Test
+          </button>
+          <button class="journey-actions button btn-download" onclick="downloadTest()" style="padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
+            Download
+          </button>
+          <button class="journey-actions button btn-copy" onclick="copyTest()" style="padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
+            Copy
+          </button>
+        </div>
+
+        <div class="test-output" id="testOutput">// Select a path and click "Generate Test" to see the test code here</div>
       </div>
     </div>
 
@@ -527,6 +731,352 @@ graph TD
         alert('Failed to copy to clipboard');
       });
     }
+
+    // Path Finder Mode
+    let currentMode = 'journey';
+    let startNode = null;
+    let endNode = null;
+    let foundPaths = [];
+    let selectedPathIndex = -1;
+    let generatedTestCode = '';
+
+    function setMode(mode) {
+      currentMode = mode;
+
+      // Update button states
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+
+      // Show/hide UI sections
+      const pathFinderUI = document.getElementById('pathFinderUI');
+      if (mode === 'pathfind') {
+        pathFinderUI.style.display = 'block';
+      } else {
+        pathFinderUI.style.display = 'none';
+        clearSelection();
+      }
+    }
+
+    function handleNodeClickPathfind(nodeId) {
+      const nodeData = graphData.nodes[nodeId];
+      if (!nodeData) return;
+
+      if (!startNode) {
+        startNode = nodeId;
+        document.getElementById('startNodeLabel').textContent = nodeData.path;
+        document.getElementById('startNodeBox').classList.add('filled');
+      } else if (!endNode && nodeId !== startNode) {
+        endNode = nodeId;
+        document.getElementById('endNodeLabel').textContent = nodeData.path;
+        document.getElementById('endNodeBox').classList.add('filled');
+      }
+
+      updatePathfindHighlights();
+    }
+
+    function updatePathfindHighlights() {
+      // Clear all highlights
+      document.querySelectorAll('.node-start, .node-end').forEach(el => {
+        el.classList.remove('node-start', 'node-end');
+      });
+
+      // Highlight start node
+      if (startNode) {
+        const startElements = document.querySelectorAll(`.mermaid .node[id*="${startNode}"]`);
+        startElements.forEach(el => el.classList.add('node-start'));
+      }
+
+      // Highlight end node
+      if (endNode) {
+        const endElements = document.querySelectorAll(`.mermaid .node[id*="${endNode}"]`);
+        endElements.forEach(el => el.classList.add('node-end'));
+      }
+    }
+
+    function clearSelection() {
+      startNode = null;
+      endNode = null;
+      foundPaths = [];
+      selectedPathIndex = -1;
+      generatedTestCode = '';
+
+      document.getElementById('startNodeLabel').textContent = 'Click a node...';
+      document.getElementById('endNodeLabel').textContent = 'Click a node...';
+      document.getElementById('startNodeBox').classList.remove('filled');
+      document.getElementById('endNodeBox').classList.remove('filled');
+      document.getElementById('pathsList').innerHTML = '';
+      document.getElementById('testOutput').textContent = '// Select a path and click "Generate Test" to see the test code here';
+
+      updatePathfindHighlights();
+    }
+
+    function findAllPathsBFS(startId, endId, maxPaths = 10, maxLength = 10) {
+      const paths = [];
+      const queue = [[startId]];
+
+      while (queue.length > 0 && paths.length < maxPaths) {
+        const currentPath = queue.shift();
+        const currentNode = currentPath[currentPath.length - 1];
+
+        if (currentNode === endId) {
+          paths.push(currentPath);
+          continue;
+        }
+
+        if (currentPath.length >= maxLength) {
+          continue;
+        }
+
+        const outgoingEdges = graphData.edges.filter(e => e.from === currentNode);
+
+        for (const edge of outgoingEdges) {
+          if (!currentPath.includes(edge.to)) {
+            queue.push([...currentPath, edge.to]);
+          }
+        }
+      }
+
+      paths.sort((a, b) => a.length - b.length);
+      return paths;
+    }
+
+    function findPaths() {
+      if (!startNode || !endNode) {
+        alert('Please select both start and end nodes');
+        return;
+      }
+
+      foundPaths = findAllPathsBFS(startNode, endNode);
+
+      const pathsList = document.getElementById('pathsList');
+
+      if (foundPaths.length === 0) {
+        pathsList.innerHTML = '<div class="instructions">No paths found between selected nodes</div>';
+        return;
+      }
+
+      let html = '';
+      foundPaths.forEach((path, index) => {
+        const pathNodes = path.map(id => graphData.nodes[id]?.path || id).join(' → ');
+        html += `
+          <div class="path-item" onclick="selectPath(${index})">
+            <div class="path-item-header">Path ${index + 1} (${path.length} steps)</div>
+            <div class="path-item-nodes">${pathNodes}</div>
+          </div>
+        `;
+      });
+
+      pathsList.innerHTML = html;
+    }
+
+    function selectPath(index) {
+      selectedPathIndex = index;
+
+      // Update UI
+      document.querySelectorAll('.path-item').forEach((el, i) => {
+        el.classList.toggle('selected', i === index);
+      });
+    }
+
+    function generateTest() {
+      if (selectedPathIndex < 0 || !foundPaths[selectedPathIndex]) {
+        alert('Please select a path first');
+        return;
+      }
+
+      const path = foundPaths[selectedPathIndex];
+      const format = document.getElementById('testFormat').value;
+
+      switch (format) {
+        case 'playwright':
+          generatedTestCode = generatePlaywrightCode(path);
+          break;
+        case 'cypress':
+          generatedTestCode = generateCypressCode(path);
+          break;
+        case 'gherkin':
+          generatedTestCode = generateGherkinCode(path);
+          break;
+      }
+
+      document.getElementById('testOutput').textContent = generatedTestCode;
+    }
+
+    function generatePlaywrightCode(path) {
+      const startNode = graphData.nodes[path[0]];
+      const endNode = graphData.nodes[path[path.length - 1]];
+      const testName = `${startNode?.component || 'Start'} to ${endNode?.component || 'End'}`;
+
+      let code = `import { test, expect } from '@playwright/test';
+
+test('${testName}', async ({ page }) => {
+  test.setTimeout(30000);
+
+`;
+
+      for (let i = 0; i < path.length; i++) {
+        const nodeId = path[i];
+        const node = graphData.nodes[nodeId];
+        if (!node) continue;
+
+        if (i === 0) {
+          code += `  // Navigate to start page
+  await page.goto('http://localhost:3000${node.path}');
+
+`;
+        } else {
+          const prevNodeId = path[i - 1];
+          const edge = graphData.edges.find(e => e.from === prevNodeId && e.to === nodeId);
+          const action = edge?.action || 'navigate to';
+
+          code += `  // ${action} ${node.path}
+  await page.click('a[href="${node.path}"], [data-testid="${node.path.replace(/\//g, '-').substring(1) || 'home'}"]');
+
+  // Verify URL
+  await expect(page).toHaveURL('${node.path}');
+
+`;
+        }
+      }
+
+      code += '});';
+      return code;
+    }
+
+    function generateCypressCode(path) {
+      const startNode = graphData.nodes[path[0]];
+      const endNode = graphData.nodes[path[path.length - 1]];
+      const testName = `${startNode?.component || 'Start'} to ${endNode?.component || 'End'}`;
+
+      let code = `describe('${testName}', () => {
+  it('should complete the journey', () => {
+`;
+
+      for (let i = 0; i < path.length; i++) {
+        const nodeId = path[i];
+        const node = graphData.nodes[nodeId];
+        if (!node) continue;
+
+        if (i === 0) {
+          code += `    // Navigate to start page
+    cy.visit('${node.path}');
+
+`;
+        } else {
+          const prevNodeId = path[i - 1];
+          const edge = graphData.edges.find(e => e.from === prevNodeId && e.to === nodeId);
+          const action = edge?.action || 'navigate to';
+
+          code += `    // ${action} ${node.path}
+    cy.get('a[href="${node.path}"], [data-testid="${node.path.replace(/\//g, '-').substring(1) || 'home'}"]').click();
+
+    // Verify URL
+    cy.url().should('include', '${node.path}');
+
+`;
+        }
+      }
+
+      code += `  });
+});`;
+      return code;
+    }
+
+    function generateGherkinCode(path) {
+      const startNode = graphData.nodes[path[0]];
+      const endNode = graphData.nodes[path[path.length - 1]];
+
+      let code = `Feature: User Journey from ${startNode?.component || 'Start'} to ${endNode?.component || 'End'}
+
+  Scenario: Navigate through the application
+`;
+
+      for (let i = 0; i < path.length; i++) {
+        const nodeId = path[i];
+        const node = graphData.nodes[nodeId];
+        if (!node) continue;
+
+        if (i === 0) {
+          code += `    Given the user is on the "${node.path}" page
+`;
+        } else {
+          const prevNodeId = path[i - 1];
+          const edge = graphData.edges.find(e => e.from === prevNodeId && e.to === nodeId);
+          const action = edge?.action || 'navigates to';
+          const keyword = i === 1 ? 'When' : 'And';
+
+          code += `    ${keyword} the user ${action} "${node.path}"
+`;
+        }
+      }
+
+      if (path.length > 0) {
+        const lastNode = graphData.nodes[path[path.length - 1]];
+        code += `    Then the user should be on the "${lastNode?.path}" page
+`;
+      }
+
+      return code;
+    }
+
+    function downloadTest() {
+      if (!generatedTestCode) {
+        alert('Generate a test first');
+        return;
+      }
+
+      const format = document.getElementById('testFormat').value;
+      let filename, mimeType;
+
+      switch (format) {
+        case 'playwright':
+          filename = 'test.spec.js';
+          mimeType = 'text/javascript';
+          break;
+        case 'cypress':
+          filename = 'test.cy.js';
+          mimeType = 'text/javascript';
+          break;
+        case 'gherkin':
+          filename = 'test.feature';
+          mimeType = 'text/plain';
+          break;
+      }
+
+      const blob = new Blob([generatedTestCode], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function copyTest() {
+      if (!generatedTestCode) {
+        alert('Generate a test first');
+        return;
+      }
+
+      navigator.clipboard.writeText(generatedTestCode).then(() => {
+        alert('Test code copied to clipboard!');
+      }).catch(err => {
+        console.error('Failed to copy:', err);
+        alert('Failed to copy to clipboard');
+      });
+    }
+
+    // Override handleNodeClick to support both modes
+    const originalHandleNodeClick = handleNodeClick;
+    handleNodeClick = function(nodeId) {
+      if (currentMode === 'pathfind') {
+        handleNodeClickPathfind(nodeId);
+      } else {
+        originalHandleNodeClick(nodeId);
+      }
+    };
   </script>
 </body>
 </html>
