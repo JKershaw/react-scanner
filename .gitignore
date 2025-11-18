@@ -1,5 +1,4 @@
 node_modules/
-flowchart.html
 *.log
 .DS_Store
 coverage/
