@@ -10,14 +10,14 @@ import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.join(__dirname, '..');
+const projectRoot = path.join(__dirname, '..', '..');
 const demoDir = path.join(projectRoot, 'demo', 'src');
 
 describe('Integration', () => {
   describe('Full pipeline', () => {
     it('should scan demo app and build graph', async () => {
-      const { scanProject } = await import('../src/scanner.js');
-      const { buildGraph } = await import('../src/graph.js');
+      const { scanProject } = await import('../../src/core/scanner.js');
+      const { buildGraph } = await import('../../src/core/graph.js');
 
       const scanResult = scanProject(demoDir);
 
@@ -38,9 +38,9 @@ describe('Integration', () => {
     });
 
     it('should generate valid HTML', async () => {
-      const { scanProject } = await import('../src/scanner.js');
-      const { buildGraph } = await import('../src/graph.js');
-      const { generateHTML } = await import('../src/visualizer.js');
+      const { scanProject } = await import('../../src/core/scanner.js');
+      const { buildGraph } = await import('../../src/core/graph.js');
+      const { generateHTML } = await import('../../src/core/visualizer.js');
 
       const scanResult = scanProject(demoDir);
       const graph = buildGraph(scanResult);
@@ -66,7 +66,7 @@ describe('Integration', () => {
 
       // Run CLI
       try {
-        execSync(`node src/index.js demo/src ${outputFile}`, {
+        execSync(`node src/cli/index.js demo/src ${outputFile}`, {
           cwd: projectRoot,
           stdio: 'pipe',
         });
@@ -90,7 +90,7 @@ describe('Integration', () => {
   describe('Error handling', () => {
     it('should handle non-existent directory gracefully', () => {
       try {
-        execSync('node src/index.js /non/existent/dir output.html', {
+        execSync('node src/cli/index.js /non/existent/dir output.html', {
           cwd: projectRoot,
           stdio: 'pipe',
         });
@@ -102,9 +102,9 @@ describe('Integration', () => {
     });
 
     it('should handle empty directory', async () => {
-      const { scanProject } = await import('../src/scanner.js');
-      const { buildGraph } = await import('../src/graph.js');
-      const { generateHTML } = await import('../src/visualizer.js');
+      const { scanProject } = await import('../../src/core/scanner.js');
+      const { buildGraph } = await import('../../src/core/graph.js');
+      const { generateHTML } = await import('../../src/core/visualizer.js');
 
       // Create temp empty dir
       const emptyDir = path.join(projectRoot, 'test-empty');
@@ -126,7 +126,7 @@ describe('Integration', () => {
 
   describe('Demo app validation', () => {
     it('should detect all navigation patterns', async () => {
-      const { scanProject } = await import('../src/scanner.js');
+      const { scanProject } = await import('../../src/core/scanner.js');
 
       const scanResult = scanProject(demoDir);
 
@@ -144,7 +144,7 @@ describe('Integration', () => {
     });
 
     it('should find dynamic route', async () => {
-      const { scanProject } = await import('../src/scanner.js');
+      const { scanProject } = await import('../../src/core/scanner.js');
 
       const scanResult = scanProject(demoDir);
 
@@ -154,7 +154,7 @@ describe('Integration', () => {
     });
 
     it('should find wildcard route', async () => {
-      const { scanProject } = await import('../src/scanner.js');
+      const { scanProject } = await import('../../src/core/scanner.js');
 
       const scanResult = scanProject(demoDir);
 

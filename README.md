@@ -4,136 +4,157 @@ Generate interactive flowcharts from React applications by analyzing React Route
 
 ## Features
 
-- Scans React applications for routes and navigation links
-- Analyzes React Router v6 configurations
-- Detects `<Link>`, `<NavLink>`, and `navigate()` calls
-- Generates interactive HTML flowcharts using Mermaid.js
-- Supports JSX and TypeScript files
-- Handles dynamic routes with parameters
-- Color-coded node types (pages, dashboards, auth, errors)
+- **AST Analysis**: Scans React applications using Babel parser to extract routes and navigation
+- **Interactive Visualization**: React Flow-based flowchart with pan, zoom, and minimap
+- **Path Finding**: BFS algorithm to find navigation paths between pages
+- **Test Generation**: Generate Playwright, Cypress, or Gherkin test code
+- **Planning Mode**: Draft hypothetical pages and connections before implementing
+- **Mobile Responsive**: Touch-friendly UI that works on all devices
 
-## Installation
+## Quick Start
+
+### Installation
 
 ```bash
 npm install
 ```
 
-## Usage
+### CLI Usage
 
-### Basic Usage
-
-```bash
-# Scan demo app (default)
-node src/index.js
-
-# Scan a specific directory
-node src/index.js ./path/to/react/src
-
-# Specify output file
-node src/index.js ./path/to/react/src output.html
-```
-
-### Default Behavior
-
-- Source directory: `./demo/src`
-- Output file: `flowchart.html`
-
-### Examples
+Generate a static HTML flowchart:
 
 ```bash
-# Scan your React app
-node src/index.js ./my-app/src my-app-flowchart.html
+npm start [source-dir] [output-file]
 
-# Use with npx (after global install)
-npx react-flowchart-generator ./src
+# Examples:
+npm start ./src flowchart.html
+npm start ./demo/src output.html
 ```
 
-## How It Works
+### Web Application
 
-1. **Scanner**: Parses React files using Babel AST to extract:
-   - Route definitions from `<Route>` components
-   - Navigation links from `<Link>` and `<NavLink>`
-   - Programmatic navigation from `navigate()` calls
-
-2. **Graph Builder**: Converts scanner output into a graph:
-   - Creates nodes from routes
-   - Creates edges from navigation links
-   - Infers source components from filenames
-
-3. **Visualizer**: Generates output:
-   - Converts graph to Mermaid syntax
-   - Wraps in responsive HTML template
-   - Includes Mermaid.js via CDN
-
-## Testing
+Start the development server:
 
 ```bash
-# Run all tests
-npm test
+npm run dev
 ```
 
-## Project Structure
+Then open http://localhost:3001 in your browser.
+
+## Architecture
 
 ```
 react-flowchart-generator/
 ├── src/
-│   ├── scanner.js      # AST extraction of routes/links
-│   ├── graph.js        # Graph data structure builder
-│   ├── visualizer.js   # Mermaid + HTML generation
-│   └── index.js        # CLI entry point
-├── test/
-│   ├── scanner.test.js
-│   ├── graph.test.js
-│   ├── visualizer.test.js
-│   ├── integration.test.js
-│   └── fixtures/       # Test fixtures
-└── demo/               # Demo React app
-    └── src/
-        ├── pages/      # Page components
-        └── routes.jsx  # Route configuration
+│   ├── core/           # Business logic (pure functions)
+│   │   ├── scanner.js      # AST parsing for routes/links
+│   │   ├── graph.js        # Graph building
+│   │   ├── test-generator.js # Test code generation
+│   │   ├── visualizer.js   # Mermaid HTML generation
+│   │   └── utils.js        # Utility functions
+│   ├── ui/             # React frontend
+│   │   ├── App.jsx         # Main application with Zustand store
+│   │   ├── components/     # React components
+│   │   ├── hooks/          # Custom React hooks
+│   │   └── styles/         # CSS styles
+│   ├── server/         # Express backend
+│   │   ├── index.js        # API endpoints
+│   │   ├── file-system.js  # Project scanning
+│   │   └── test-runner.js  # Playwright execution
+│   └── cli/            # Command-line interface
+│       └── index.js
+├── test/               # Test suite
+│   ├── core/           # Unit tests
+│   ├── fixtures/       # Test fixtures
+│   └── e2e/            # Integration tests
+└── demo/               # Demo React application
 ```
 
-## Known Limitations
+## API Reference
 
-- **Static analysis only**: Does not execute code, so dynamic values are not resolved
-- **React Router v6 focus**: Optimized for React Router v6 patterns
-- **Conventional naming expected**: Best results with standard file naming (PascalCase components)
-- **Dynamic routes**: Routes with parameters (`:id`) may show as isolated nodes
-- **Conditional rendering**: Not fully analyzed; only extracts literal paths
+### REST Endpoints
 
-## Node Types
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /api/health | Health check |
+| GET | /api/projects | List React projects |
+| POST | /api/projects/scan | Scan a project |
+| GET | /api/projects/:id | Get cached scan |
+| POST | /api/projects/validate | Validate project path |
+| POST | /api/tests/run | Execute Playwright test |
+| DELETE | /api/cache | Clear scan cache |
 
-The flowchart uses different colors and shapes for different page types:
+### Core Functions
 
-- **Regular Page** (gray): Standard pages
-- **Dashboard** (blue): Pages with "dashboard" or "admin" in path
-- **Auth Page** (green): Pages with "auth", "login", or "signup"
-- **Error Page** (red): 404/NotFound pages and wildcard routes
+#### Scanner
 
-## Output
+```javascript
+import { scanProject } from './src/core/scanner.js';
 
-The generated HTML file includes:
+const result = scanProject('./src');
+// Returns: { files, routes, links }
+```
 
-- Interactive flowchart with zoom/pan
-- Node and edge statistics
-- Generation timestamp
-- Legend for node types
-- Responsive design
+#### Graph Builder
 
-## Dependencies
+```javascript
+import { buildGraph } from './src/core/graph.js';
 
-- `@babel/parser` - AST parsing
-- `@babel/traverse` - AST traversal
-- Mermaid.js (CDN) - Flowchart rendering
+const graph = buildGraph(scanResult);
+// Returns: { nodes: Map, edges: Array }
+```
 
-## Future Enhancements
+#### Test Generator
 
-- Interactive mode with clickable nodes
-- Multi-framework support (Vue, Svelte)
-- Live reload mode
-- Export to PNG/PDF/SVG
-- Test coverage overlay
-- Branch comparison mode
+```javascript
+import { findAllPaths, generatePlaywrightTest } from './src/core/test-generator.js';
+
+const paths = findAllPaths(graph, 'home', 'settings');
+const testCode = generatePlaywrightTest(paths[0], graph);
+```
+
+## Supported Patterns
+
+The scanner detects these navigation patterns:
+
+- **Route Definitions**: `<Route path="/" element={<Home />} />`
+- **Link Components**: `<Link to="/about">About</Link>`
+- **NavLink Components**: `<NavLink to="/dashboard">Dashboard</NavLink>`
+- **Programmatic Navigation**: `navigate('/settings')`
+- **Button Handlers**: `<button onClick={() => navigate('/profile')}>Profile</button>`
+- **Form Submissions**: `<form onSubmit={() => navigate('/success')}>`
+
+## Scripts
+
+```bash
+npm test          # Run all tests
+npm test:core     # Run core unit tests
+npm start         # Run CLI
+npm run dev       # Start dev server
+npm run build     # Build for production
+```
+
+## Test Coverage
+
+- 120+ tests covering core functionality
+- Unit tests for scanner, graph, visualizer, utils
+- Integration tests for full pipeline
+- File system and API tests
+
+## Browser Support
+
+- Chrome/Edge (latest)
+- Firefox (latest)
+- Safari (latest)
+- Mobile Safari/Chrome
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Write tests for new functionality
+4. Ensure all tests pass (`npm test`)
+5. Submit a pull request
 
 ## License
 

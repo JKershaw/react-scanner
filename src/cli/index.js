@@ -6,9 +6,9 @@
 
 import fs from 'fs';
 import path from 'path';
-import { scanProject } from './scanner.js';
-import { buildGraph, validateGraph } from './graph.js';
-import { generateHTML } from './visualizer.js';
+import { scanProject } from '../core/scanner.js';
+import { buildGraph, validateGraph } from '../core/graph.js';
+import { generateHTML } from '../core/visualizer.js';
 
 /**
  * Main CLI function

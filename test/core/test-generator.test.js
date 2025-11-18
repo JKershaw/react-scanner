@@ -11,7 +11,7 @@ import {
   generatePlaywrightTest,
   generateCypressTest,
   generateTestCases
-} from '../src/test-generator.js';
+} from '../../src/core/test-generator.js';
 
 describe('TestGenerator', () => {
   // Sample graph for testing

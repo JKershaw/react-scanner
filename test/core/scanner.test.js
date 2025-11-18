@@ -6,10 +6,10 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { parseFile, findRoutes, findLinks, scanDirectory, scanProject } from '../src/scanner.js';
+import { parseFile, findRoutes, findLinks, scanDirectory, scanProject } from '../../src/core/scanner.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const fixturesDir = path.join(__dirname, 'fixtures');
+const fixturesDir = path.join(__dirname, '../fixtures');
 
 describe('Scanner', () => {
   describe('parseFile', () => {

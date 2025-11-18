@@ -4,7 +4,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { generateMermaidSyntax, generateHTML } from '../src/visualizer.js';
+import { generateMermaidSyntax, generateHTML } from '../../src/core/visualizer.js';
 
 describe('Visualizer', () => {
   describe('generateMermaidSyntax', () => {

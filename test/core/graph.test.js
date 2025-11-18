@@ -11,7 +11,7 @@ import {
   getNodeType,
   buildGraph,
   validateGraph
-} from '../src/graph.js';
+} from '../../src/core/graph.js';
 
 describe('Graph', () => {
   describe('inferSourcePath', () => {
