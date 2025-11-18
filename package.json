@@ -1,0 +1,29 @@
+{
+  "name": "react-flowchart-generator",
+  "version": "1.0.0",
+  "description": "Generate interactive flowcharts from React applications by analyzing React Router configurations and navigation components",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "react-flowchart": "src/index.js"
+  },
+  "scripts": {
+    "test": "node --test test/**/*.test.js",
+    "start": "node src/index.js"
+  },
+  "keywords": [
+    "react",
+    "flowchart",
+    "visualization",
+    "react-router",
+    "navigation",
+    "ast",
+    "mermaid"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@babel/parser": "^7.23.0",
+    "@babel/traverse": "^7.23.0"
+  }
+}
