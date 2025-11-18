@@ -101,9 +101,84 @@ export function findRoutes(filePath) {
 }
 
 /**
+ * Extract a string value from various AST node types
+ * @param {Object} node - AST node
+ * @returns {string|null} - Extracted string value or null
+ */
+function extractStringValue(node) {
+  if (!node) return null;
+
+  if (node.type === 'StringLiteral') {
+    return node.value;
+  } else if (node.type === 'TemplateLiteral' && node.quasis.length === 1) {
+    return node.quasis[0].value.raw;
+  }
+  return null;
+}
+
+/**
+ * Find navigate calls within a function body or expression
+ * @param {Object} node - AST node to search
+ * @returns {Array<string>} - Array of navigation targets
+ */
+function findNavigateTargets(node) {
+  const targets = [];
+
+  if (!node) return targets;
+
+  // Handle arrow function with direct navigate call
+  if (node.type === 'ArrowFunctionExpression') {
+    if (node.body.type === 'CallExpression') {
+      const target = extractNavigateTarget(node.body);
+      if (target) targets.push(target);
+    } else if (node.body.type === 'BlockStatement') {
+      // Search block for navigate calls
+      for (const stmt of node.body.body) {
+        if (stmt.type === 'ExpressionStatement' && stmt.expression.type === 'CallExpression') {
+          const target = extractNavigateTarget(stmt.expression);
+          if (target) targets.push(target);
+        }
+      }
+    }
+  }
+
+  // Handle function expression
+  if (node.type === 'FunctionExpression' && node.body.type === 'BlockStatement') {
+    for (const stmt of node.body.body) {
+      if (stmt.type === 'ExpressionStatement' && stmt.expression.type === 'CallExpression') {
+        const target = extractNavigateTarget(stmt.expression);
+        if (target) targets.push(target);
+      }
+    }
+  }
+
+  // Handle direct call expression
+  if (node.type === 'CallExpression') {
+    const target = extractNavigateTarget(node);
+    if (target) targets.push(target);
+  }
+
+  return targets;
+}
+
+/**
+ * Extract navigate target from a call expression
+ * @param {Object} callExpr - CallExpression AST node
+ * @returns {string|null} - Navigation target or null
+ */
+function extractNavigateTarget(callExpr) {
+  if (callExpr.callee.type === 'Identifier' && callExpr.callee.name === 'navigate') {
+    if (callExpr.arguments.length > 0) {
+      return extractStringValue(callExpr.arguments[0]);
+    }
+  }
+  return null;
+}
+
+/**
  * Extract navigation links from a file
  * @param {string} filePath - Path to the file to scan
- * @returns {Array<{to: string, fromFile: string, line: number, type: string}>}
+ * @returns {Array<{to: string, fromFile: string, line: number, type: string, action: string}>}
  */
 export function findLinks(filePath) {
   const ast = parseFile(filePath);
@@ -118,9 +193,10 @@ export function findLinks(filePath) {
       const openingElement = nodePath.node.openingElement;
       const elementName = openingElement.name;
 
-      if (elementName.type === 'JSXIdentifier' &&
-          (elementName.name === 'Link' || elementName.name === 'NavLink')) {
+      if (elementName.type !== 'JSXIdentifier') return;
 
+      // Handle Link and NavLink
+      if (elementName.name === 'Link' || elementName.name === 'NavLink') {
         const toAttr = openingElement.attributes.find(
           attr => attr.type === 'JSXAttribute' && attr.name && attr.name.name === 'to'
         );
@@ -131,12 +207,7 @@ export function findLinks(filePath) {
           if (toAttr.value.type === 'StringLiteral') {
             toValue = toAttr.value.value;
           } else if (toAttr.value.type === 'JSXExpressionContainer') {
-            const expr = toAttr.value.expression;
-            if (expr.type === 'StringLiteral') {
-              toValue = expr.value;
-            } else if (expr.type === 'TemplateLiteral' && expr.quasis.length === 1) {
-              toValue = expr.quasis[0].value.raw;
-            }
+            toValue = extractStringValue(toAttr.value.expression);
           }
 
           if (toValue !== null) {
@@ -145,27 +216,68 @@ export function findLinks(filePath) {
               fromFile: fileName,
               line: nodePath.node.loc?.start.line || 0,
               type: elementName.name,
+              action: 'clicks link',
+            });
+          }
+        }
+      }
+
+      // Handle button onClick
+      if (elementName.name === 'button' || elementName.name === 'Button') {
+        const onClickAttr = openingElement.attributes.find(
+          attr => attr.type === 'JSXAttribute' && attr.name && attr.name.name === 'onClick'
+        );
+
+        if (onClickAttr && onClickAttr.value && onClickAttr.value.type === 'JSXExpressionContainer') {
+          const targets = findNavigateTargets(onClickAttr.value.expression);
+          for (const target of targets) {
+            links.push({
+              to: target,
+              fromFile: fileName,
+              line: nodePath.node.loc?.start.line || 0,
+              type: 'button',
+              action: 'clicks button',
+            });
+          }
+        }
+      }
+
+      // Handle form onSubmit
+      if (elementName.name === 'form' || elementName.name === 'Form') {
+        const onSubmitAttr = openingElement.attributes.find(
+          attr => attr.type === 'JSXAttribute' && attr.name && attr.name.name === 'onSubmit'
+        );
+
+        if (onSubmitAttr && onSubmitAttr.value && onSubmitAttr.value.type === 'JSXExpressionContainer') {
+          const targets = findNavigateTargets(onSubmitAttr.value.expression);
+          for (const target of targets) {
+            links.push({
+              to: target,
+              fromFile: fileName,
+              line: nodePath.node.loc?.start.line || 0,
+              type: 'form',
+              action: 'submits form',
             });
           }
         }
       }
     },
 
-    // Find navigate() calls
+    // Find navigate() calls (standalone, not in onClick/onSubmit)
     CallExpression(nodePath) {
       const callee = nodePath.node.callee;
 
       if (callee.type === 'Identifier' && callee.name === 'navigate') {
+        // Check if this is already captured by onClick/onSubmit handler
+        const parent = nodePath.parent;
+        if (parent && parent.type === 'ArrowFunctionExpression') {
+          // Skip - will be captured by JSXElement handler
+          return;
+        }
+
         const args = nodePath.node.arguments;
         if (args.length > 0) {
-          const firstArg = args[0];
-          let toValue = null;
-
-          if (firstArg.type === 'StringLiteral') {
-            toValue = firstArg.value;
-          } else if (firstArg.type === 'TemplateLiteral' && firstArg.quasis.length === 1) {
-            toValue = firstArg.quasis[0].value.raw;
-          }
+          const toValue = extractStringValue(args[0]);
 
           if (toValue !== null) {
             links.push({
@@ -173,6 +285,7 @@ export function findLinks(filePath) {
               fromFile: fileName,
               line: nodePath.node.loc?.start.line || 0,
               type: 'navigate',
+              action: 'navigates to',
             });
           }
         }

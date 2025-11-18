@@ -155,6 +155,8 @@ export function buildGraph(scanResult) {
             to: targetId,
             label: link.type,
             type: link.type,
+            action: link.action || 'navigates to',
+            targetPath: link.to,
           });
         }
       }

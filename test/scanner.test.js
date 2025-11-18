@@ -93,6 +93,31 @@ describe('Scanner', () => {
       const links = findLinks('/non/existent/file.jsx');
       assert.strictEqual(links.length, 0);
     });
+
+    it('should extract button onClick handlers with navigate', () => {
+      const filePath = path.join(fixturesDir, 'button-click.jsx');
+      const links = findLinks(filePath);
+      assert.strictEqual(links.length, 2);
+      assert.ok(links.some(l => l.to === '/dashboard' && l.type === 'button'));
+      assert.ok(links.some(l => l.to === '/profile' && l.type === 'button'));
+      assert.ok(links.every(l => l.action === 'clicks button'));
+    });
+
+    it('should extract form onSubmit handlers with navigate', () => {
+      const filePath = path.join(fixturesDir, 'form-submit.jsx');
+      const links = findLinks(filePath);
+      // May find both form handler and standalone navigate - filter for form type
+      const formLinks = links.filter(l => l.type === 'form');
+      assert.strictEqual(formLinks.length, 1);
+      assert.strictEqual(formLinks[0].to, '/success');
+      assert.strictEqual(formLinks[0].action, 'submits form');
+    });
+
+    it('should include action field in link data', () => {
+      const filePath = path.join(fixturesDir, 'multiple-links.jsx');
+      const links = findLinks(filePath);
+      assert.ok(links.every(l => l.action === 'clicks link'));
+    });
   });
 
   describe('scanDirectory', () => {
