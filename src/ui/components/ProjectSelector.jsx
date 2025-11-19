@@ -3,8 +3,8 @@ import { useStore } from '../App.jsx';
 
 // Default projects that always appear
 const DEFAULT_PROJECTS = [
-  { name: 'Demo App', path: '/home/user/react-scanner/demo' },
-  { name: 'This Project', path: '/home/user/react-scanner' },
+  { name: 'Demo App', path: './demo' },
+  { name: 'This Project', path: '.' },
 ];
 
 function ProjectSelector() {
