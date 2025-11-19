@@ -379,24 +379,87 @@ export function scanDirectory(dirPath) {
 }
 
 /**
+ * Find React component definitions in a file as a fallback when no routes exist
+ * @param {string} filePath - Path to the file to scan
+ * @returns {Array<{path: string, component: string, line: number}>}
+ */
+export function findComponents(filePath) {
+  const ast = parseFile(filePath);
+  if (!ast) return [];
+
+  const components = [];
+  const fileName = path.basename(filePath, path.extname(filePath));
+
+  traverse(ast, {
+    // Find function components
+    FunctionDeclaration(nodePath) {
+      const name = nodePath.node.id?.name;
+      if (name && /^[A-Z]/.test(name)) { // React components start with uppercase
+        components.push({
+          path: `/${name.toLowerCase()}`,
+          component: name,
+          line: nodePath.node.loc?.start.line || 0,
+          file: filePath,
+          type: 'component',
+        });
+      }
+    },
+
+    // Find arrow function components
+    VariableDeclarator(nodePath) {
+      const name = nodePath.node.id?.name;
+      const init = nodePath.node.init;
+
+      if (name && /^[A-Z]/.test(name) && init) {
+        // Check if it's a function (arrow or regular)
+        if (init.type === 'ArrowFunctionExpression' ||
+            init.type === 'FunctionExpression') {
+          // Check if it returns JSX
+          const hasJSX = init.body?.type === 'JSXElement' ||
+                        (init.body?.type === 'BlockStatement' &&
+                         init.body.body.some(stmt =>
+                           stmt.type === 'ReturnStatement' &&
+                           stmt.argument?.type === 'JSXElement'));
+
+          if (hasJSX || name.includes('Component') || name.includes('Page') || name.includes('View')) {
+            components.push({
+              path: `/${name.toLowerCase()}`,
+              component: name,
+              line: nodePath.node.loc?.start.line || 0,
+              file: filePath,
+              type: 'component',
+            });
+          }
+        }
+      }
+    },
+  });
+
+  return components;
+}
+
+/**
  * Scan all files in a directory and extract routes and links
  * @param {string} dirPath - Directory to scan
- * @returns {{routes: Array, links: Array, imports: Array, files: Array}}
+ * @returns {{routes: Array, links: Array, imports: Array, files: Array, components: Array}}
  */
 export function scanProject(dirPath) {
   const files = scanDirectory(dirPath);
   const allRoutes = [];
   const allLinks = [];
   const allImports = [];
+  const allComponents = [];
 
   for (const file of files) {
     const routes = findRoutes(file);
     const links = findLinks(file);
     const imports = findImports(file);
+    const components = findComponents(file);
 
     allRoutes.push(...routes.map(r => ({ ...r, file })));
     allLinks.push(...links.map(l => ({ ...l, file })));
     allImports.push(...imports.map(i => ({ ...i, file })));
+    allComponents.push(...components);
   }
 
   return {
@@ -404,5 +467,6 @@ export function scanProject(dirPath) {
     links: allLinks,
     imports: allImports,
     files,
+    components: allComponents,
   };
 }

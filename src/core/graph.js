@@ -181,31 +181,33 @@ export function findSourcePaths(filename, routes, importGraph) {
  * @returns {{nodes: Map, edges: Array}}
  */
 export function buildGraph(scanResult) {
-  const { routes, links, imports = [] } = scanResult;
+  const { routes, links, imports = [], components = [] } = scanResult;
   const nodes = new Map();
   const edges = [];
 
   // Build import graph for shared component resolution
   const importGraph = buildImportGraph(imports, routes);
 
-  // Create nodes from routes
-  for (const route of routes) {
-    const id = sanitizeId(route.path);
+  // Create nodes from routes (or components if no routes)
+  const nodeSource = routes.length > 0 ? routes : components;
+
+  for (const item of nodeSource) {
+    const id = sanitizeId(item.path);
 
     if (!nodes.has(id)) {
       nodes.set(id, {
         id,
-        path: route.path,
-        label: createNodeLabel(route.path, route.component),
-        type: getNodeType(route.path, route.component),
-        component: route.component,
+        path: item.path,
+        label: createNodeLabel(item.path, item.component),
+        type: item.type || getNodeType(item.path, item.component),
+        component: item.component,
       });
     }
   }
 
   // Create edges from links
   for (const link of links) {
-    const sourcePaths = findSourcePaths(link.fromFile, routes, importGraph);
+    const sourcePaths = findSourcePaths(link.fromFile, nodeSource, importGraph);
     const targetId = sanitizeId(link.to);
 
     for (const sourcePath of sourcePaths) {
@@ -227,6 +229,44 @@ export function buildGraph(scanResult) {
             action: link.action || 'navigates to',
             targetPath: link.to,
           });
+        }
+      }
+    }
+  }
+
+  // If using components and no links, create edges from imports
+  if (routes.length === 0 && links.length === 0 && components.length > 0) {
+    // Create edges based on component imports
+    for (const imp of imports) {
+      // Find source component
+      const sourceComponent = components.find(c =>
+        path.basename(c.file, path.extname(c.file)) ===
+        path.basename(imp.file, path.extname(imp.file))
+      );
+
+      // Find target component
+      const targetComponent = components.find(c => c.component === imp.imported);
+
+      if (sourceComponent && targetComponent) {
+        const sourceId = sanitizeId(sourceComponent.path);
+        const targetId = sanitizeId(targetComponent.path);
+
+        if (nodes.has(sourceId) && nodes.has(targetId) && sourceId !== targetId) {
+          // Check for duplicate edges
+          const isDuplicate = edges.some(
+            e => e.from === sourceId && e.to === targetId
+          );
+
+          if (!isDuplicate) {
+            edges.push({
+              from: sourceId,
+              to: targetId,
+              label: 'imports',
+              type: 'import',
+              action: 'imports component',
+              targetPath: targetComponent.path,
+            });
+          }
         }
       }
     }

@@ -116,6 +116,7 @@ export function scanProjectFiles(projectPath, useCache = true) {
       files: scanResult.files,
       routeCount: scanResult.routes.length,
       linkCount: scanResult.links.length,
+      componentCount: scanResult.components ? scanResult.components.length : 0,
     },
     graph: {
       nodes: nodesObj,
