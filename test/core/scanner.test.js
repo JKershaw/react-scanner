@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { parseFile, findRoutes, findLinks, scanDirectory, scanProject } from '../../src/core/scanner.js';
+import { parseFile, findRoutes, findLinks, findImports, scanDirectory, scanProject } from '../../src/core/scanner.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(__dirname, '../fixtures');
@@ -120,6 +120,55 @@ describe('Scanner', () => {
     });
   });
 
+  describe('findImports', () => {
+    it('should extract default imports', () => {
+      const filePath = path.join(fixturesDir, 'page-with-sidebar.jsx');
+      const imports = findImports(filePath);
+      const sidebarImport = imports.find(i => i.imported === 'Sidebar');
+      assert.ok(sidebarImport);
+      assert.strictEqual(sidebarImport.source, './shared-sidebar');
+      assert.strictEqual(sidebarImport.fromFile, 'page-with-sidebar.jsx');
+    });
+
+    it('should extract named imports', () => {
+      const filePath = path.join(fixturesDir, 'import-named.jsx');
+      const imports = findImports(filePath);
+      const navMenuImport = imports.find(i => i.imported === 'NavMenu');
+      const footerImport = imports.find(i => i.imported === 'Footer');
+      assert.ok(navMenuImport);
+      assert.ok(footerImport);
+      assert.strictEqual(navMenuImport.source, './components');
+    });
+
+    it('should only track local imports', () => {
+      const filePath = path.join(fixturesDir, 'page-with-sidebar.jsx');
+      const imports = findImports(filePath);
+      // Should not include 'react-router-dom' import
+      const routerImport = imports.find(i => i.source === 'react-router-dom');
+      assert.strictEqual(routerImport, undefined);
+    });
+
+    it('should include fromFile in import data', () => {
+      const filePath = path.join(fixturesDir, 'page-with-sidebar.jsx');
+      const imports = findImports(filePath);
+      assert.ok(imports.every(i => i.fromFile === 'page-with-sidebar.jsx'));
+    });
+
+    it('should return empty array for non-existent file', () => {
+      const imports = findImports('/non/existent/file.jsx');
+      assert.strictEqual(imports.length, 0);
+    });
+
+    it('should find local imports in route file', () => {
+      const filePath = path.join(fixturesDir, 'simple-route.jsx');
+      const imports = findImports(filePath);
+      // simple-route.jsx imports Home from './Home'
+      assert.strictEqual(imports.length, 1);
+      assert.strictEqual(imports[0].imported, 'Home');
+      assert.strictEqual(imports[0].source, './Home');
+    });
+  });
+
   describe('scanDirectory', () => {
     it('should find all React files in directory', () => {
       const files = scanDirectory(fixturesDir);
@@ -149,6 +198,17 @@ describe('Scanner', () => {
     it('should include file path in link data', () => {
       const result = scanProject(fixturesDir);
       assert.ok(result.links.every(l => l.file));
+    });
+
+    it('should include imports in scan result', () => {
+      const result = scanProject(fixturesDir);
+      assert.ok(result.imports);
+      assert.ok(result.imports.length > 0);
+    });
+
+    it('should include file path in import data', () => {
+      const result = scanProject(fixturesDir);
+      assert.ok(result.imports.every(i => i.file));
     });
   });
 });

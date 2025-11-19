@@ -101,6 +101,52 @@ export function findRoutes(filePath) {
 }
 
 /**
+ * Extract import statements from a file
+ * @param {string} filePath - Path to the file to scan
+ * @returns {Array<{imported: string, source: string, fromFile: string}>}
+ */
+export function findImports(filePath) {
+  const ast = parseFile(filePath);
+  if (!ast) return [];
+
+  const imports = [];
+  const fileName = path.basename(filePath);
+
+  traverse(ast, {
+    ImportDeclaration(nodePath) {
+      const source = nodePath.node.source.value;
+
+      // Only track local imports (starting with . or /)
+      if (!source.startsWith('.') && !source.startsWith('/')) {
+        return;
+      }
+
+      for (const specifier of nodePath.node.specifiers) {
+        let importedName = null;
+
+        if (specifier.type === 'ImportDefaultSpecifier') {
+          // import Sidebar from './Sidebar'
+          importedName = specifier.local.name;
+        } else if (specifier.type === 'ImportSpecifier') {
+          // import { Sidebar } from './components'
+          importedName = specifier.imported?.name || specifier.local.name;
+        }
+
+        if (importedName) {
+          imports.push({
+            imported: importedName,
+            source: source,
+            fromFile: fileName,
+          });
+        }
+      }
+    },
+  });
+
+  return imports;
+}
+
+/**
  * Extract a string value from various AST node types
  * @param {Object} node - AST node
  * @returns {string|null} - Extracted string value or null
@@ -335,24 +381,28 @@ export function scanDirectory(dirPath) {
 /**
  * Scan all files in a directory and extract routes and links
  * @param {string} dirPath - Directory to scan
- * @returns {{routes: Array, links: Array, files: Array}}
+ * @returns {{routes: Array, links: Array, imports: Array, files: Array}}
  */
 export function scanProject(dirPath) {
   const files = scanDirectory(dirPath);
   const allRoutes = [];
   const allLinks = [];
+  const allImports = [];
 
   for (const file of files) {
     const routes = findRoutes(file);
     const links = findLinks(file);
+    const imports = findImports(file);
 
     allRoutes.push(...routes.map(r => ({ ...r, file })));
     allLinks.push(...links.map(l => ({ ...l, file })));
+    allImports.push(...imports.map(i => ({ ...i, file })));
   }
 
   return {
     routes: allRoutes,
     links: allLinks,
+    imports: allImports,
     files,
   };
 }
