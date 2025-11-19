@@ -7,13 +7,18 @@
  * 3. View the flowchart
  * 4. Select nodes to find a path
  * 5. Generate test code
+ *
+ * Note: Run these tests locally or in CI with `npm run test:browser`
  */
 
 import { test, expect } from '@playwright/test';
 
+// Use domcontentloaded since Vite's HMR keeps WebSocket connections open
+const gotoOptions = { waitUntil: 'domcontentloaded' };
+
 test.describe('React Flowchart Generator', () => {
   test('should load the app with welcome message', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/', gotoOptions);
 
     // App header should be visible
     await expect(page.locator('h1')).toContainText('React Flowchart Generator');
@@ -23,7 +28,7 @@ test.describe('React Flowchart Generator', () => {
   });
 
   test('should show project selector with default projects', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/', gotoOptions);
 
     // Project dropdown should exist
     const dropdown = page.locator('.project-dropdown');
@@ -36,7 +41,7 @@ test.describe('React Flowchart Generator', () => {
   });
 
   test('should load demo project and display flowchart', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/', gotoOptions);
 
     // Select demo project
     await page.selectOption('.project-dropdown', { label: 'Demo App' });
@@ -55,7 +60,7 @@ test.describe('React Flowchart Generator', () => {
   });
 
   test('should display path selector after loading project', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/', gotoOptions);
 
     // Load demo project
     await page.selectOption('.project-dropdown', { label: 'Demo App' });
@@ -70,7 +75,7 @@ test.describe('React Flowchart Generator', () => {
   });
 
   test('should select start node when clicking flowchart node', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/', gotoOptions);
 
     // Load demo project
     await page.selectOption('.project-dropdown', { label: 'Demo App' });
@@ -86,7 +91,7 @@ test.describe('React Flowchart Generator', () => {
   });
 
   test('should show test generator panel', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/', gotoOptions);
 
     // Load demo project
     await page.selectOption('.project-dropdown', { label: 'Demo App' });
@@ -98,7 +103,7 @@ test.describe('React Flowchart Generator', () => {
   });
 
   test('should show planning mode toggle', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/', gotoOptions);
 
     // Load demo project
     await page.selectOption('.project-dropdown', { label: 'Demo App' });
@@ -113,7 +118,7 @@ test.describe('React Flowchart Generator', () => {
   });
 
   test('should change project when clicking Change button', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/', gotoOptions);
 
     // Load demo project
     await page.selectOption('.project-dropdown', { label: 'Demo App' });
@@ -131,7 +136,7 @@ test.describe('React Flowchart Generator', () => {
   });
 
   test('should display error for invalid custom path', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/', gotoOptions);
 
     // Click custom path button
     await page.click('button:has-text("Custom Path")');
@@ -145,7 +150,7 @@ test.describe('React Flowchart Generator', () => {
   });
 
   test('should show flowchart legend', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/', gotoOptions);
 
     // Load demo project
     await page.selectOption('.project-dropdown', { label: 'Demo App' });

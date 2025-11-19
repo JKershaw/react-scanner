@@ -18,12 +18,23 @@ export default defineConfig({
     command: 'node scripts/start-dev.js',
     url: 'http://localhost:3000',
     timeout: 30000,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
   },
   projects: [
     {
       name: 'chromium',
-      use: { browserName: 'chromium' },
+      use: {
+        browserName: 'chromium',
+        launchOptions: {
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--disable-software-rasterizer',
+          ],
+        },
+      },
     },
   ],
 });

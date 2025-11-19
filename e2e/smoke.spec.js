@@ -1,38 +1,23 @@
 /**
- * Smoke test to verify Playwright setup works
+ * Smoke test to verify basic Playwright setup
+ *
+ * Note: These tests must be run locally or in CI, not in Claude Code on the Web
+ * due to browser proxy limitations.
  */
 
 import { test, expect } from '@playwright/test';
 
-test('smoke test - page loads', async ({ page }) => {
-  // Just try to go to the page
-  const response = await page.goto('/');
+test('smoke test - app loads with correct title', async ({ page }) => {
+  // Use domcontentloaded since Vite's HMR keeps WebSocket connections open
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-  // Log what we got
-  console.log('Response status:', response?.status());
-  console.log('Response URL:', response?.url());
-
-  // Check we got a response
-  expect(response?.status()).toBe(200);
+  // Verify page title
+  await expect(page).toHaveTitle('React Flowchart Generator');
 });
 
-test('smoke test - check page title', async ({ page }) => {
-  await page.goto('/');
+test('smoke test - root element exists', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-  // Get the page title
-  const title = await page.title();
-  console.log('Page title:', title);
-
-  expect(title).toBeTruthy();
-});
-
-test('smoke test - check body has content', async ({ page }) => {
-  await page.goto('/');
-
-  // Get body content
-  const bodyContent = await page.locator('body').innerHTML();
-  console.log('Body content length:', bodyContent.length);
-  console.log('Body content preview:', bodyContent.substring(0, 500));
-
-  expect(bodyContent.length).toBeGreaterThan(0);
+  // Verify React root exists
+  await expect(page.locator('#root')).toBeVisible();
 });
