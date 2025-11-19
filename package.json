@@ -13,7 +13,8 @@
     "test:ui": "node --test test/ui/*.test.js",
     "test:e2e": "node --test test/e2e/*.test.js",
     "start": "node src/cli/index.js",
-    "dev": "node src/server/index.js",
+    "dev": "vite",
+    "dev:api": "node src/server/index.js",
     "build": "vite build",
     "preview": "vite preview"
   },
