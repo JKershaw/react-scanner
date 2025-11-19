@@ -110,14 +110,83 @@ export function getNodeType(routePath, component) {
 }
 
 /**
+ * Build a mapping of component names to the page files that import them
+ * @param {Array} imports - Array of import records
+ * @param {Array} routes - Array of route definitions
+ * @returns {Map<string, Array<string>>} - Map from component name to array of importing page filenames
+ */
+export function buildImportGraph(imports, routes) {
+  const importGraph = new Map();
+
+  for (const imp of imports) {
+    // Extract the component name from the import source
+    // e.g., './Sidebar' -> 'Sidebar', '../components/Sidebar' -> 'Sidebar'
+    const sourceParts = imp.source.split('/');
+    const sourceFile = sourceParts[sourceParts.length - 1].replace(/\.(jsx?|tsx?)$/, '');
+
+    // The imported name might differ from the filename (aliased imports)
+    // We track by the imported name as that's what appears in the code
+    const componentName = imp.imported;
+
+    if (!importGraph.has(componentName)) {
+      importGraph.set(componentName, []);
+    }
+
+    importGraph.get(componentName).push(imp.fromFile);
+  }
+
+  return importGraph;
+}
+
+/**
+ * Find all page source paths for a given file, including via imports
+ * @param {string} filename - The filename to find sources for
+ * @param {Array} routes - Array of route definitions
+ * @param {Map} importGraph - Map of component names to importing files
+ * @returns {Array<string>} - Array of route paths
+ */
+export function findSourcePaths(filename, routes, importGraph) {
+  const sourcePaths = [];
+
+  // First, try direct match
+  const directPath = inferSourcePath(filename, routes);
+  if (directPath !== null) {
+    sourcePaths.push(directPath);
+    return sourcePaths;
+  }
+
+  // If no direct match, this might be a shared component
+  // Find all pages that import this component
+  const baseName = path.basename(filename, path.extname(filename));
+
+  // Check if any pages import this component
+  const importingFiles = importGraph.get(baseName) || [];
+
+  for (const importingFile of importingFiles) {
+    // Recursively find the source path for the importing file
+    const importingPaths = findSourcePaths(importingFile, routes, importGraph);
+    for (const p of importingPaths) {
+      if (!sourcePaths.includes(p)) {
+        sourcePaths.push(p);
+      }
+    }
+  }
+
+  return sourcePaths;
+}
+
+/**
  * Build a graph from scanner output
  * @param {Object} scanResult - Result from scanProject
  * @returns {{nodes: Map, edges: Array}}
  */
 export function buildGraph(scanResult) {
-  const { routes, links } = scanResult;
+  const { routes, links, imports = [] } = scanResult;
   const nodes = new Map();
   const edges = [];
+
+  // Build import graph for shared component resolution
+  const importGraph = buildImportGraph(imports, routes);
 
   // Create nodes from routes
   for (const route of routes) {
@@ -136,10 +205,10 @@ export function buildGraph(scanResult) {
 
   // Create edges from links
   for (const link of links) {
-    const sourcePath = inferSourcePath(link.fromFile, routes);
+    const sourcePaths = findSourcePaths(link.fromFile, routes, importGraph);
     const targetId = sanitizeId(link.to);
 
-    if (sourcePath !== null) {
+    for (const sourcePath of sourcePaths) {
       const sourceId = sanitizeId(sourcePath);
 
       // Only add edge if both source and target nodes exist

@@ -124,6 +124,110 @@ describe('Integration', () => {
     });
   });
 
+  describe('Shared component edge attribution', () => {
+    it('should detect imports from page components', async () => {
+      const { scanProject } = await import('../../src/core/scanner.js');
+      const fixturesDir = path.join(__dirname, '../fixtures');
+
+      const scanResult = scanProject(fixturesDir);
+
+      // Should find imports
+      assert.ok(scanResult.imports.length > 0, 'Should find imports');
+
+      // Should find Sidebar imports from page components
+      const sidebarImports = scanResult.imports.filter(i => i.imported === 'Sidebar');
+      assert.ok(sidebarImports.length >= 2, `Expected at least 2 Sidebar imports, got ${sidebarImports.length}`);
+    });
+
+    it('should create edges from shared component links to all importing pages', async () => {
+      const { buildGraph } = await import('../../src/core/graph.js');
+
+      // Simulate a project with shared sidebar
+      const scanResult = {
+        routes: [
+          { path: '/settings/profile', component: 'SettingsProfile', file: 'routes.jsx' },
+          { path: '/settings/security', component: 'SettingsSecurity', file: 'routes.jsx' },
+          { path: '/dashboard', component: 'Dashboard', file: 'routes.jsx' },
+        ],
+        links: [
+          // Links in shared Sidebar component
+          { to: '/settings/profile', fromFile: 'Sidebar.jsx', type: 'Link', file: 'Sidebar.jsx' },
+          { to: '/settings/security', fromFile: 'Sidebar.jsx', type: 'Link', file: 'Sidebar.jsx' },
+          { to: '/dashboard', fromFile: 'Sidebar.jsx', type: 'Link', file: 'Sidebar.jsx' },
+        ],
+        imports: [
+          { imported: 'Sidebar', source: './Sidebar', fromFile: 'SettingsProfile.jsx', file: 'SettingsProfile.jsx' },
+          { imported: 'Sidebar', source: './Sidebar', fromFile: 'SettingsSecurity.jsx', file: 'SettingsSecurity.jsx' },
+        ],
+      };
+
+      const graph = buildGraph(scanResult);
+
+      // Profile page should have edges to Security and Dashboard via sidebar
+      const profileToSecurity = graph.edges.find(e => e.from === 'settings_profile' && e.to === 'settings_security');
+      const profileToDashboard = graph.edges.find(e => e.from === 'settings_profile' && e.to === 'dashboard');
+      assert.ok(profileToSecurity, 'Profile should link to Security via sidebar');
+      assert.ok(profileToDashboard, 'Profile should link to Dashboard via sidebar');
+
+      // Security page should have edges to Profile and Dashboard via sidebar
+      const securityToProfile = graph.edges.find(e => e.from === 'settings_security' && e.to === 'settings_profile');
+      const securityToDashboard = graph.edges.find(e => e.from === 'settings_security' && e.to === 'dashboard');
+      assert.ok(securityToProfile, 'Security should link to Profile via sidebar');
+      assert.ok(securityToDashboard, 'Security should link to Dashboard via sidebar');
+    });
+
+    it('should handle nested component imports', async () => {
+      const { buildGraph } = await import('../../src/core/graph.js');
+
+      // Simulate nested imports: Icon -> Sidebar -> Page
+      const scanResult = {
+        routes: [
+          { path: '/home', component: 'Home', file: 'routes.jsx' },
+          { path: '/about', component: 'About', file: 'routes.jsx' },
+        ],
+        links: [
+          // Link in deeply nested Icon component
+          { to: '/about', fromFile: 'Icon.jsx', type: 'Link', file: 'Icon.jsx' },
+        ],
+        imports: [
+          { imported: 'Icon', source: './Icon', fromFile: 'Sidebar.jsx', file: 'Sidebar.jsx' },
+          { imported: 'Sidebar', source: './Sidebar', fromFile: 'Home.jsx', file: 'Home.jsx' },
+        ],
+      };
+
+      const graph = buildGraph(scanResult);
+
+      // Home should have edge to About via nested Icon -> Sidebar
+      const homeToAbout = graph.edges.find(e => e.from === 'home' && e.to === 'about');
+      assert.ok(homeToAbout, 'Home should link to About via nested Icon component');
+    });
+
+    it('should deduplicate edges from same shared component', async () => {
+      const { buildGraph } = await import('../../src/core/graph.js');
+
+      const scanResult = {
+        routes: [
+          { path: '/home', component: 'Home', file: 'routes.jsx' },
+          { path: '/about', component: 'About', file: 'routes.jsx' },
+        ],
+        links: [
+          // Multiple links to same target in shared component
+          { to: '/about', fromFile: 'Nav.jsx', type: 'Link', file: 'Nav.jsx' },
+          { to: '/about', fromFile: 'Nav.jsx', type: 'NavLink', file: 'Nav.jsx' },
+        ],
+        imports: [
+          { imported: 'Nav', source: './Nav', fromFile: 'Home.jsx', file: 'Home.jsx' },
+        ],
+      };
+
+      const graph = buildGraph(scanResult);
+
+      // Should only have one edge from Home to About (deduplicated)
+      const homeToAbout = graph.edges.filter(e => e.from === 'home' && e.to === 'about');
+      assert.strictEqual(homeToAbout.length, 1, 'Should deduplicate edges from same source to same target');
+    });
+  });
+
   describe('Demo app validation', () => {
     it('should detect all navigation patterns', async () => {
       const { scanProject } = await import('../../src/core/scanner.js');

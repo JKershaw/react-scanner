@@ -10,7 +10,9 @@ import {
   createNodeLabel,
   getNodeType,
   buildGraph,
-  validateGraph
+  validateGraph,
+  buildImportGraph,
+  findSourcePaths
 } from '../../src/core/graph.js';
 
 describe('Graph', () => {
@@ -107,6 +109,86 @@ describe('Graph', () => {
     });
   });
 
+  describe('buildImportGraph', () => {
+    it('should map component names to importing files', () => {
+      const imports = [
+        { imported: 'Sidebar', source: './Sidebar', fromFile: 'Home.jsx' },
+        { imported: 'Sidebar', source: './Sidebar', fromFile: 'About.jsx' },
+      ];
+      const routes = [];
+
+      const importGraph = buildImportGraph(imports, routes);
+      assert.ok(importGraph.has('Sidebar'));
+      assert.deepStrictEqual(importGraph.get('Sidebar'), ['Home.jsx', 'About.jsx']);
+    });
+
+    it('should handle named imports', () => {
+      const imports = [
+        { imported: 'NavMenu', source: './components', fromFile: 'Dashboard.jsx' },
+        { imported: 'Footer', source: './components', fromFile: 'Dashboard.jsx' },
+      ];
+      const routes = [];
+
+      const importGraph = buildImportGraph(imports, routes);
+      assert.ok(importGraph.has('NavMenu'));
+      assert.ok(importGraph.has('Footer'));
+    });
+
+    it('should return empty map for no imports', () => {
+      const importGraph = buildImportGraph([], []);
+      assert.strictEqual(importGraph.size, 0);
+    });
+  });
+
+  describe('findSourcePaths', () => {
+    const routes = [
+      { path: '/', component: 'Home' },
+      { path: '/settings/profile', component: 'SettingsProfile' },
+      { path: '/settings/security', component: 'SettingsSecurity' },
+      { path: '/dashboard', component: 'Dashboard' },
+    ];
+
+    it('should return direct match for page component', () => {
+      const importGraph = new Map();
+      const paths = findSourcePaths('Home.jsx', routes, importGraph);
+      assert.deepStrictEqual(paths, ['/']);
+    });
+
+    it('should return all importing pages for shared component', () => {
+      const importGraph = new Map([
+        ['Sidebar', ['SettingsProfile.jsx', 'SettingsSecurity.jsx']],
+      ]);
+      const paths = findSourcePaths('Sidebar.jsx', routes, importGraph);
+      assert.strictEqual(paths.length, 2);
+      assert.ok(paths.includes('/settings/profile'));
+      assert.ok(paths.includes('/settings/security'));
+    });
+
+    it('should handle nested imports (component imported by another shared component)', () => {
+      const importGraph = new Map([
+        ['Icon', ['Sidebar.jsx']],
+        ['Sidebar', ['SettingsProfile.jsx']],
+      ]);
+      const paths = findSourcePaths('Icon.jsx', routes, importGraph);
+      assert.strictEqual(paths.length, 1);
+      assert.ok(paths.includes('/settings/profile'));
+    });
+
+    it('should return empty array for unmatched component', () => {
+      const importGraph = new Map();
+      const paths = findSourcePaths('Unknown.jsx', routes, importGraph);
+      assert.deepStrictEqual(paths, []);
+    });
+
+    it('should deduplicate paths', () => {
+      const importGraph = new Map([
+        ['Sidebar', ['SettingsProfile.jsx', 'SettingsProfile.jsx']],
+      ]);
+      const paths = findSourcePaths('Sidebar.jsx', routes, importGraph);
+      assert.strictEqual(paths.length, 1);
+    });
+  });
+
   describe('buildGraph', () => {
     it('should create nodes from routes', () => {
       const scanResult = {
@@ -160,6 +242,79 @@ describe('Graph', () => {
 
       const graph = buildGraph(scanResult);
       assert.strictEqual(graph.edges.length, 1);
+    });
+
+    it('should create edges from shared component links to all importing pages', () => {
+      const scanResult = {
+        routes: [
+          { path: '/settings/profile', component: 'SettingsProfile', file: 'routes.jsx' },
+          { path: '/settings/security', component: 'SettingsSecurity', file: 'routes.jsx' },
+          { path: '/dashboard', component: 'Dashboard', file: 'routes.jsx' },
+        ],
+        links: [
+          // Link in shared Sidebar component
+          { to: '/dashboard', fromFile: 'Sidebar.jsx', type: 'Link', file: 'Sidebar.jsx' },
+        ],
+        imports: [
+          { imported: 'Sidebar', source: './Sidebar', fromFile: 'SettingsProfile.jsx', file: 'SettingsProfile.jsx' },
+          { imported: 'Sidebar', source: './Sidebar', fromFile: 'SettingsSecurity.jsx', file: 'SettingsSecurity.jsx' },
+        ],
+      };
+
+      const graph = buildGraph(scanResult);
+      // Should create edges from both settings pages to dashboard
+      assert.strictEqual(graph.edges.length, 2);
+      const edgeFromProfile = graph.edges.find(e => e.from === 'settings_profile');
+      const edgeFromSecurity = graph.edges.find(e => e.from === 'settings_security');
+      assert.ok(edgeFromProfile);
+      assert.ok(edgeFromSecurity);
+      assert.strictEqual(edgeFromProfile.to, 'dashboard');
+      assert.strictEqual(edgeFromSecurity.to, 'dashboard');
+    });
+
+    it('should handle sidebar with multiple links', () => {
+      const scanResult = {
+        routes: [
+          { path: '/settings/profile', component: 'SettingsProfile', file: 'routes.jsx' },
+          { path: '/settings/security', component: 'SettingsSecurity', file: 'routes.jsx' },
+        ],
+        links: [
+          // Links in shared Sidebar component
+          { to: '/settings/profile', fromFile: 'Sidebar.jsx', type: 'Link', file: 'Sidebar.jsx' },
+          { to: '/settings/security', fromFile: 'Sidebar.jsx', type: 'Link', file: 'Sidebar.jsx' },
+        ],
+        imports: [
+          { imported: 'Sidebar', source: './Sidebar', fromFile: 'SettingsProfile.jsx', file: 'SettingsProfile.jsx' },
+          { imported: 'Sidebar', source: './Sidebar', fromFile: 'SettingsSecurity.jsx', file: 'SettingsSecurity.jsx' },
+        ],
+      };
+
+      const graph = buildGraph(scanResult);
+      // Each page should have edges to both targets (but not to itself due to deduplication logic)
+      // Profile -> Security (from sidebar)
+      // Security -> Profile (from sidebar)
+      const profileToSecurity = graph.edges.find(e => e.from === 'settings_profile' && e.to === 'settings_security');
+      const securityToProfile = graph.edges.find(e => e.from === 'settings_security' && e.to === 'settings_profile');
+      assert.ok(profileToSecurity);
+      assert.ok(securityToProfile);
+    });
+
+    it('should work without imports (backward compatibility)', () => {
+      const scanResult = {
+        routes: [
+          { path: '/', component: 'Home', file: 'routes.jsx' },
+          { path: '/about', component: 'About', file: 'routes.jsx' },
+        ],
+        links: [
+          { to: '/about', fromFile: 'Home.jsx', type: 'Link', file: 'Home.jsx' },
+        ],
+        // No imports field
+      };
+
+      const graph = buildGraph(scanResult);
+      assert.strictEqual(graph.edges.length, 1);
+      assert.strictEqual(graph.edges[0].from, 'root');
+      assert.strictEqual(graph.edges[0].to, 'about');
     });
   });
 

@@ -151,6 +151,9 @@ function FlowchartViewer() {
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
         fitView
+        fitViewOptions={{ maxZoom: 1, padding: 0.2 }}
+        minZoom={0.5}
+        maxZoom={2}
         attributionPosition="bottom-left"
       >
         <Background color="#aaa" gap={16} />
