@@ -5,6 +5,7 @@ import { useStore } from '../App.jsx';
 const DEFAULT_PROJECTS = [
   { name: 'Demo App', path: './demo' },
   { name: 'This Project', path: '.' },
+  { name: 'Wick White Label', path: '../wick/white-label' },
 ];
 
 function ProjectSelector() {
