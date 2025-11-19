@@ -14,18 +14,12 @@ export default defineConfig({
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
   },
-  webServer: [
-    {
-      command: 'node src/server/index.js',
-      port: 3001,
-      reuseExistingServer: true,
-    },
-    {
-      command: 'npx vite --port 3000',
-      port: 3000,
-      reuseExistingServer: true,
-    },
-  ],
+  webServer: {
+    command: 'node scripts/start-dev.js',
+    url: 'http://localhost:3000',
+    timeout: 30000,
+    reuseExistingServer: !process.env.CI,
+  },
   projects: [
     {
       name: 'chromium',
