@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../App.jsx';
 
 // Default projects that always appear
@@ -21,7 +21,6 @@ function ProjectSelector() {
 
   const [customPath, setCustomPath] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
-  const folderInputRef = useRef(null);
 
   // Load recent projects from localStorage and merge with defaults
   useEffect(() => {
@@ -75,12 +74,12 @@ function ProjectSelector() {
         body: JSON.stringify({ projectPath }),
       });
 
+      // Parse JSON once
+      const data = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
         throw new Error(data.error || 'Failed to scan project');
       }
-
-      const data = await response.json();
 
       const project = {
         path: projectPath,
@@ -104,23 +103,6 @@ function ProjectSelector() {
       setShowCustomInput(false);
       setCustomPath('');
     }
-  };
-
-  const handleFolderSelect = (e) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      // Get the folder path from the first file's webkitRelativePath
-      const relativePath = files[0].webkitRelativePath;
-      const folderName = relativePath.split('/')[0];
-
-      // For browser security, we can't get the absolute path
-      // So we'll prompt the user to enter it
-      setCustomPath(folderName);
-      setShowCustomInput(true);
-      setError('Browser security prevents reading absolute paths. Please enter the full path to: ' + folderName);
-    }
-    // Reset input
-    e.target.value = '';
   };
 
   return (
@@ -169,24 +151,6 @@ function ProjectSelector() {
                 </optgroup>
               )}
             </select>
-
-            <input
-              type="file"
-              ref={folderInputRef}
-              onChange={handleFolderSelect}
-              webkitdirectory=""
-              directory=""
-              style={{ display: 'none' }}
-            />
-
-            <button
-              className="btn-secondary"
-              onClick={() => folderInputRef.current?.click()}
-              disabled={isLoading}
-              title="Browse for folder"
-            >
-              Browse
-            </button>
 
             <button
               className="btn-primary"
