@@ -39,14 +39,17 @@ function findAllPaths(graph, startId, endId, maxPaths = 5) {
 function PathSelector() {
   const {
     graph,
-    selectedStart,
-    selectedEnd,
+    selectedNodes,
     foundPaths,
     selectedPath,
+    setSelectedNodes,
     setFoundPaths,
     setSelectedPath,
     clearSelection,
   } = useStore();
+
+  const selectedStart = selectedNodes[0] || null;
+  const selectedEnd = selectedNodes[1] || null;
 
   // Find paths when start and end are selected
   useEffect(() => {

@@ -178,6 +178,351 @@ body {
   }
 }
 
+/* D3 Force Graph */
+.d3-graph-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #f0f0f0;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.d3-graph-container svg {
+  cursor: grab;
+}
+
+.d3-graph-container svg:active {
+  cursor: grabbing;
+}
+
+.graph-controls {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  z-index: 10;
+}
+
+.graph-controls button {
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.75rem;
+  box-shadow: var(--shadow);
+}
+
+.graph-controls button:hover {
+  background: var(--background);
+}
+
+.graph-legend {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: var(--surface);
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 10;
+  border: 1px solid var(--border);
+}
+
+.graph-legend h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.graph-legend .legend-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.graph-legend .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.graph-legend .legend-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.graph-info {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  background: var(--surface);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  z-index: 10;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.graph-info p {
+  margin: 2px 0;
+  color: var(--text-light);
+}
+
+.graph-empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: var(--text-light);
+}
+
+.graph-empty p {
+  margin: 0.25rem 0;
+}
+
+/* Enhanced Graph Search */
+.graph-search-panel {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  background: var(--surface);
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 15;
+  min-width: 250px;
+  border: 1px solid var(--border);
+}
+
+.search-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.search-input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+}
+
+.filter-select {
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  background: var(--surface);
+}
+
+.search-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.75rem;
+}
+
+.suggestion-item:hover {
+  background: var(--background);
+  border-color: var(--primary);
+}
+
+.suggestion-name {
+  font-weight: 600;
+  flex: 1;
+}
+
+.suggestion-path {
+  color: var(--text-light);
+  font-size: 0.7rem;
+}
+
+.suggestion-type {
+  padding: 0.125rem 0.25rem;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  background: var(--background);
+}
+
+.search-stats {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-light);
+}
+
+/* Enhanced Graph Controls */
+.graph-controls {
+  position: absolute;
+  top: 1rem;
+  right: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--surface);
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 10;
+  border: 1px solid var(--border);
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.control-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+}
+
+.control-select {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  background: var(--surface);
+}
+
+.btn-control {
+  padding: 0.375rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.btn-control:hover {
+  background: var(--background);
+}
+
+/* Force Controls */
+.force-controls {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  background: var(--surface);
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 10;
+  border: 1px solid var(--border);
+  min-width: 200px;
+}
+
+.control-slider {
+  margin-bottom: 0.75rem;
+}
+
+.control-slider label {
+  display: block;
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+  color: var(--text-light);
+}
+
+.control-slider input[type="range"] {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  outline: none;
+}
+
+.control-slider input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--primary);
+  cursor: pointer;
+}
+
+/* Improved Legend */
+.graph-legend .legend-count {
+  margin-left: auto;
+  color: var(--text-light);
+  font-size: 0.7rem;
+}
+
+/* Keyboard Shortcuts Help */
+.keyboard-help {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 20;
+}
+
+.keyboard-help > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.help-content {
+  display: none;
+  position: absolute;
+  bottom: 40px;
+  right: 0;
+  background: var(--surface);
+  padding: 1rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  min-width: 200px;
+}
+
+.keyboard-help:hover .help-content {
+  display: block;
+}
+
+.help-content h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+.help-content div {
+  font-size: 0.75rem;
+  padding: 0.25rem 0;
+  color: var(--text-light);
+}
+
 /* Flowchart viewer */
 .flowchart-viewer {
   height: 100%;

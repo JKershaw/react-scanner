@@ -1,7 +1,7 @@
 import React from 'react';
 import { create } from 'zustand';
 import ProjectSelector from './components/ProjectSelector.jsx';
-import FlowchartViewer from './components/FlowchartViewer.jsx';
+import D3ForceGraphStable from './components/D3ForceGraphStable.jsx';
 import PathSelector from './components/PathSelector.jsx';
 import TestGenerator from './components/TestGenerator.jsx';
 import TestRunner from './components/TestRunner.jsx';
@@ -25,6 +25,10 @@ export const useStore = create((set, get) => ({
   selectedEnd: null,
   foundPaths: [],
   selectedPath: null,
+
+  // D3 Graph state
+  selectedNodes: [],
+  hoveredNode: null,
 
   // Planning mode state
   isPlanningMode: false,
@@ -76,6 +80,7 @@ export const useStore = create((set, get) => ({
   clearSelection: () => set({
     selectedStart: null,
     selectedEnd: null,
+    selectedNodes: [],
     foundPaths: [],
     selectedPath: null,
   }),
@@ -89,6 +94,10 @@ export const useStore = create((set, get) => ({
   })),
 
   setGeneratedTest: (test) => set({ generatedTest: test }),
+
+  // D3 Graph actions
+  setSelectedNodes: (nodes) => set({ selectedNodes: nodes }),
+  setHoveredNode: (nodeId) => set({ hoveredNode: nodeId }),
 }));
 
 function App() {
@@ -119,7 +128,7 @@ function App() {
         ) : (
           <div className="workspace">
             <div className="flowchart-container">
-              <FlowchartViewer />
+              <D3ForceGraphStable />
             </div>
             <aside className="sidebar">
               <PathSelector />

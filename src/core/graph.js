@@ -128,14 +128,77 @@ export function buildImportGraph(imports, routes) {
     // We track by the imported name as that's what appears in the code
     const componentName = imp.imported;
 
-    if (!importGraph.has(componentName)) {
-      importGraph.set(componentName, []);
+    // Skip self-imports (component importing itself)
+    const fromBaseName = path.basename(imp.fromFile, path.extname(imp.fromFile));
+    if (fromBaseName === componentName) {
+      continue;
     }
 
-    importGraph.get(componentName).push(imp.fromFile);
+    if (!importGraph.has(componentName)) {
+      importGraph.set(componentName, new Set());
+    }
+
+    // Use a Set to avoid duplicate entries, then convert back to array
+    importGraph.get(componentName).add(imp.fromFile);
   }
 
-  return importGraph;
+  // Convert Sets to Arrays for compatibility
+  const finalGraph = new Map();
+  for (const [key, valueSet] of importGraph) {
+    finalGraph.set(key, Array.from(valueSet));
+  }
+
+  return finalGraph;
+}
+
+/**
+ * Find all page source paths iteratively using BFS (for very large codebases)
+ * @param {string} filename - The filename to find sources for
+ * @param {Array} routes - Array of route definitions
+ * @param {Map} importGraph - Map of component names to importing files
+ * @param {number} maxIterations - Maximum iterations to prevent runaway loops
+ * @returns {Array<string>} - Array of route paths
+ */
+export function findSourcePathsIterative(filename, routes, importGraph, maxIterations = 1000) {
+  const sourcePaths = [];
+  const visited = new Set();
+  const queue = [filename];
+  let iterations = 0;
+
+  while (queue.length > 0 && iterations < maxIterations) {
+    iterations++;
+    const current = queue.shift();
+
+    if (visited.has(current)) {
+      continue;
+    }
+    visited.add(current);
+
+    // Try direct match
+    const directPath = inferSourcePath(current, routes);
+    if (directPath !== null) {
+      if (!sourcePaths.includes(directPath)) {
+        sourcePaths.push(directPath);
+      }
+      continue; // Found a route, no need to traverse further from this node
+    }
+
+    // Find importing files
+    const baseName = path.basename(current, path.extname(current));
+    const importingFiles = importGraph.get(baseName) || [];
+
+    for (const importingFile of importingFiles) {
+      if (importingFile !== current && !visited.has(importingFile)) {
+        queue.push(importingFile);
+      }
+    }
+  }
+
+  if (iterations >= maxIterations) {
+    console.warn(`Max iterations reached for ${filename}, graph may be too complex`);
+  }
+
+  return sourcePaths;
 }
 
 /**
@@ -143,10 +206,26 @@ export function buildImportGraph(imports, routes) {
  * @param {string} filename - The filename to find sources for
  * @param {Array} routes - Array of route definitions
  * @param {Map} importGraph - Map of component names to importing files
+ * @param {Set} visited - Set of already processed files to prevent cycles
+ * @param {number} depth - Current recursion depth
  * @returns {Array<string>} - Array of route paths
  */
-export function findSourcePaths(filename, routes, importGraph) {
+export function findSourcePaths(filename, routes, importGraph, visited = new Set(), depth = 0) {
   const sourcePaths = [];
+
+  // Prevent infinite recursion from circular imports
+  if (visited.has(filename)) {
+    return sourcePaths;
+  }
+
+  // Add depth limit to prevent extremely deep chains
+  if (depth > 20) {
+    console.warn(`Max depth reached for ${filename}, stopping recursion`);
+    return sourcePaths;
+  }
+
+  // Mark this file as visited
+  visited.add(filename);
 
   // First, try direct match
   const directPath = inferSourcePath(filename, routes);
@@ -163,8 +242,14 @@ export function findSourcePaths(filename, routes, importGraph) {
   const importingFiles = importGraph.get(baseName) || [];
 
   for (const importingFile of importingFiles) {
+    // Skip self-imports
+    if (importingFile === filename) {
+      continue;
+    }
+
     // Recursively find the source path for the importing file
-    const importingPaths = findSourcePaths(importingFile, routes, importGraph);
+    // Pass the visited set to track cycles
+    const importingPaths = findSourcePaths(importingFile, routes, importGraph, new Set(visited), depth + 1);
     for (const p of importingPaths) {
       if (!sourcePaths.includes(p)) {
         sourcePaths.push(p);
@@ -178,9 +263,19 @@ export function findSourcePaths(filename, routes, importGraph) {
 /**
  * Build a graph from scanner output
  * @param {Object} scanResult - Result from scanProject
+ * @param {Object} options - Configuration options
+ * @param {number} options.maxNodes - Maximum number of nodes (default: 1000)
+ * @param {number} options.maxEdges - Maximum number of edges (default: 5000)
+ * @param {boolean} options.useIterative - Use iterative path finding for large graphs (default: false)
  * @returns {{nodes: Map, edges: Array}}
  */
-export function buildGraph(scanResult) {
+export function buildGraph(scanResult, options = {}) {
+  const {
+    maxNodes = 1000,
+    maxEdges = 5000,
+    useIterative = false
+  } = options;
+
   const { routes, links, imports = [], components = [] } = scanResult;
   const nodes = new Map();
   const edges = [];
@@ -191,7 +286,16 @@ export function buildGraph(scanResult) {
   // Create nodes from routes (or components if no routes)
   const nodeSource = routes.length > 0 ? routes : components;
 
+  // Check if we're dealing with a large codebase
+  const isLargeCodebase = nodeSource.length > 100 || imports.length > 500;
+  const shouldUseIterative = useIterative || isLargeCodebase;
+
   for (const item of nodeSource) {
+    if (nodes.size >= maxNodes) {
+      console.warn(`Node limit (${maxNodes}) reached, stopping node creation`);
+      break;
+    }
+
     const id = sanitizeId(item.path);
 
     if (!nodes.has(id)) {
@@ -207,10 +311,23 @@ export function buildGraph(scanResult) {
 
   // Create edges from links
   for (const link of links) {
-    const sourcePaths = findSourcePaths(link.fromFile, nodeSource, importGraph);
+    if (edges.length >= maxEdges) {
+      console.warn(`Edge limit (${maxEdges}) reached, stopping edge creation`);
+      break;
+    }
+
+    // Use iterative path finding for large codebases
+    const sourcePaths = shouldUseIterative
+      ? findSourcePathsIterative(link.fromFile, nodeSource, importGraph)
+      : findSourcePaths(link.fromFile, nodeSource, importGraph);
+
     const targetId = sanitizeId(link.to);
 
     for (const sourcePath of sourcePaths) {
+      if (edges.length >= maxEdges) {
+        break;
+      }
+
       const sourceId = sanitizeId(sourcePath);
 
       // Only add edge if both source and target nodes exist
@@ -238,6 +355,11 @@ export function buildGraph(scanResult) {
   if (routes.length === 0 && links.length === 0 && components.length > 0) {
     // Create edges based on component imports
     for (const imp of imports) {
+      if (edges.length >= maxEdges) {
+        console.warn(`Edge limit (${maxEdges}) reached during import edge creation`);
+        break;
+      }
+
       // Find source component
       const sourceComponent = components.find(c =>
         path.basename(c.file, path.extname(c.file)) ===
